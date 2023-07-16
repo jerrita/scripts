@@ -1,0 +1,15 @@
+[Unit]
+Description=Dynamic DNS Updater
+After=network.target
+
+[Service]
+Environment="CF_API_TOKEN=xxxxx"
+Environment="DOMAIN=xxxx"
+Environment="ZONE=xxxx"
+Environment="EN_NAME=xxxx"
+ExecStart=/usr/bin/python /opt/scripts/ddns.py
+Restart=always
+RestartSec=300
+
+[Install]
+WantedBy=multi-user.target
