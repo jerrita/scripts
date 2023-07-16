@@ -1,0 +1,4 @@
+# For ddns.py
+dnspython
+netifaces
+requests
