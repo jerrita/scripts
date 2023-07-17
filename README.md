@@ -12,7 +12,7 @@ This script is used to update my homelab ip, which will use `cip.cc` to get real
 
 requirements:
 ```bash
-pip install dnspython netifaces requests
+pip install netifaces requests
 ```
 
 envs:

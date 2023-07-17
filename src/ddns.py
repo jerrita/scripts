@@ -2,7 +2,6 @@ import datetime
 import os
 
 import requests
-import dns.resolver
 import netifaces
 
 
@@ -44,10 +43,12 @@ class DnsClient:
         self.dns_server = dns_server
 
     def resolve_dns(self, domain, rtype) -> str:
-        resolver = self._get_resolver()
-        resolver.nameservers = [self.dns_server]
-        answer = resolver.resolve(domain, rtype)
-        return str(answer[0])
+        url = f'https://{self.dns_server}/dns-query?name={domain}&type={rtype}'
+        response = requests.get(url, headers={
+            "Accept": "application/dns-json"
+        })
+        answer = response.json()['Answer'][0]['data']
+        return answer
 
     @classmethod
     def get_ipv4_from_internet(cls):
@@ -69,10 +70,6 @@ class DnsClient:
             if i['addr'].startswith('240e'):
                 return i['addr']
 
-    @classmethod
-    def _get_resolver(cls):
-        return dns.resolver.Resolver()
-
 
 if __name__ == '__main__':
     token = os.environ['CF_API_TOKEN']
@@ -81,7 +78,7 @@ if __name__ == '__main__':
     en_name = os.environ['EN_NAME']
 
     print('[+] Time:', datetime.datetime.now())
-    dc = DnsClient('1.1.1.1')
+    dc = DnsClient('cloudflare-dns.com')
     cf = CloudflareDNS(token)
 
     # IPv4 from internet
