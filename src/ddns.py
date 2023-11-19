@@ -1,8 +1,10 @@
-import datetime
-import os
-
 import requests
 import netifaces
+from dns import message as dns_message
+
+import datetime
+import base64
+import os
 
 
 class CloudflareDNS:
@@ -43,12 +45,16 @@ class DnsClient:
         self.dns_server = dns_server
 
     def resolve_dns(self, domain, rtype) -> str:
-        url = f'https://{self.dns_server}/dns-query?name={domain}&type={rtype}'
-        response = requests.get(url, headers={
-            "Accept": "application/dns-json"
-        })
-        answer = response.json()['Answer'][0]['data']
-        return answer
+        doh_url = f'https://{self.dns_server}/dns-query'
+        message = dns_message.make_query(domain, rtype)
+        dns_req = base64.b64encode(message.to_wire()).decode("UTF8").rstrip("=")
+        response = requests.get(doh_url + "?dns=" + dns_req,
+                                headers={"Content-type": "application/dns-message"})
+        res = []
+        for answer in dns_message.from_wire(response.content).answer:
+            dns = answer.to_text().split()
+            res.append({"Query": dns[0], "TTL": dns[1], "RR": dns[3], "Answer": dns[4]})
+        return res[0]['Answer']
 
     @classmethod
     def get_ipv4_from_internet(cls):
@@ -62,6 +68,12 @@ class DnsClient:
                 ip = line.split(':')[1].strip()
                 return ip
         return None
+
+    @classmethod
+    def get_ipv4_from_interface(cls, nic):
+        details = netifaces.ifaddresses(nic)
+        for i in details[netifaces.AF_INET]:
+            return i['addr']
 
     @classmethod
     def get_ipv6_from_interface(cls, nic):
@@ -78,12 +90,12 @@ if __name__ == '__main__':
     en_name = os.environ['EN_NAME']
 
     print('[+] Time:', datetime.datetime.now())
-    dc = DnsClient('cloudflare-dns.com')
+    dc = DnsClient('dns.alidns.com')
     cf = CloudflareDNS(token)
 
     # IPv4 from internet
     old = dc.resolve_dns(domain, 'A')
-    now = dc.get_ipv4_from_internet()
+    now = dc.get_ipv4_from_interface(en_name)
     print(f'[{"+" if old != now else "-"}] IPv4: {old} => {now}')
     if old != now:
         cf.update_record(zone, domain, 'A', now)
