@@ -87,15 +87,15 @@ if __name__ == '__main__':
     token = os.environ['CF_API_TOKEN']
     domain = os.environ['DOMAIN']
     zone = os.environ['ZONE']
-    en_name = os.environ['EN_NAME']
+    nic_name = os.environ['NIC_NAME']
 
     print('[+] Time:', datetime.datetime.now())
     dc = DnsClient('dns.alidns.com')
     cf = CloudflareDNS(token)
 
-    # IPv4 from internet
+    # IPv4 from interface
     old = dc.resolve_dns(domain, 'A')
-    now = dc.get_ipv4_from_interface(en_name)
+    now = dc.get_ipv4_from_internet()
     print(f'[{"+" if old != now else "-"}] IPv4: {old} => {now}')
     if old != now:
         cf.update_record(zone, domain, 'A', now)
@@ -104,7 +104,7 @@ if __name__ == '__main__':
         print('[-] No need to update.')
 
     # IPv6 from interface
-    now = dc.get_ipv6_from_interface(en_name)
+    now = dc.get_ipv6_from_interface(nic_name)
     if not now:
         print('[-] Failed to detect ipv6 address. Skip.')
     else:
