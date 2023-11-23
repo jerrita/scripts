@@ -41,8 +41,14 @@ in
 
     nicName = mkOption {
       type = types.str;
-      default = "";
+      default = "eth0";
       description = "The nic name to get ip address.";
+    };
+
+    ipv4UpdateMethod = mkOption {
+      type = types.str;
+      default = "internet";
+      description = "none/nic/internet";
     };
   };
 
@@ -64,6 +70,7 @@ in
           "DOMAIN=${cfg.domain}"
           "ZONE=${cfg.zone}"
           "NIC_NAME=${cfg.nicName}"
+          "IPV4_METHOD=${cfg.ipv4UpdateMethod}"
         ];
       };
     };

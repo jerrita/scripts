@@ -28,7 +28,8 @@ class CloudflareDNS:
         return response.json()
 
     def _get_zone_id(self, domain):
-        response = requests.get(f'https://api.cloudflare.com/client/v4/zones?name={domain}', headers=self.headers)
+        response = requests.get(
+            f'https://api.cloudflare.com/client/v4/zones?name={domain}', headers=self.headers)
         zone_id = response.json()['result'][0]['id']
         return zone_id
 
@@ -47,13 +48,15 @@ class DnsClient:
     def resolve_dns(self, domain, rtype) -> str:
         doh_url = f'https://{self.dns_server}/dns-query'
         message = dns_message.make_query(domain, rtype)
-        dns_req = base64.b64encode(message.to_wire()).decode("UTF8").rstrip("=")
+        dns_req = base64.b64encode(
+            message.to_wire()).decode("UTF8").rstrip("=")
         response = requests.get(doh_url + "?dns=" + dns_req,
                                 headers={"Content-type": "application/dns-message"})
         res = []
         for answer in dns_message.from_wire(response.content).answer:
             dns = answer.to_text().split()
-            res.append({"Query": dns[0], "TTL": dns[1], "RR": dns[3], "Answer": dns[4]})
+            res.append({"Query": dns[0], "TTL": dns[1],
+                       "RR": dns[3], "Answer": dns[4]})
         return res[0]['Answer']
 
     @classmethod
@@ -81,6 +84,7 @@ class DnsClient:
         for i in details[netifaces.AF_INET6]:
             if i['addr'].startswith('240e'):
                 return i['addr']
+        return None
 
 
 if __name__ == '__main__':
@@ -88,24 +92,31 @@ if __name__ == '__main__':
     domain = os.environ['DOMAIN']
     zone = os.environ['ZONE']
     nic_name = os.environ['NIC_NAME']
+    ipv4_method = os.environ['IPV4_METHOD']
 
     print('[+] Time:', datetime.datetime.now())
     dc = DnsClient('dns.alidns.com')
     cf = CloudflareDNS(token)
 
-    # IPv4 from interface
-    old = dc.resolve_dns(domain, 'A')
-    now = dc.get_ipv4_from_internet()
-    print(f'[{"+" if old != now else "-"}] IPv4: {old} => {now}')
-    if old != now:
-        cf.update_record(zone, domain, 'A', now)
-        print('[+] IPv4 Updated.')
+    # IPv4
+    if ipv4_method != 'none':
+        old = dc.resolve_dns(domain, 'A')
+        if ipv4_method == 'nic':
+            now = dc.get_ipv4_from_interface(nic_name)
+        else:
+            now = dc.get_ipv4_from_internet()
+        print(f'[{"+" if old != now else "-"}] IPv4: {old} => {now}')
+        if old != now:
+            cf.update_record(zone, domain, 'A', now)
+            print('[+] IPv4 Updated.')
+        else:
+            print('[-] No need to update.')
     else:
-        print('[-] No need to update.')
+        print('[-] IPv4 update disabled.')
 
-    # IPv6 from interface
+    # IPv6
     now = dc.get_ipv6_from_interface(nic_name)
-    if not now:
+    if now is None:
         print('[-] Failed to detect ipv6 address. Skip.')
     else:
         old = dc.resolve_dns(domain, 'AAAA')
