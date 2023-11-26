@@ -56,7 +56,7 @@ in
     systemd.timers.ddns = {
       wantedBy = [ "timers.target" ];
       timerConfig = {
-        OnBootSec = "10s";
+        OnBootSec = "30s";
         OnUnitActiveSec = cfg.interval;
       };
     };
